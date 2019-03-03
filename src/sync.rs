@@ -1,13 +1,21 @@
-use crate::{Result, Ynab, N26};
+use crate::{Result, Ynab, N26, Transaction};
 
 pub struct Sync<'a> {
     pub ynab: &'a Ynab,
     pub n26: &'a N26,
 }
 
+// Find transactions in `x` that are not in `y`.
+// TODO: Use generic instead Transaction
+// TODO: Avoid O(m * n)
+fn diff<'a>(x: &'a [Transaction], y: &'a [Transaction]) -> Vec<&'a Transaction> {
+    x.iter().filter(|t| !y.contains(t)).collect()
+}
+
 impl<'a> Sync<'a> {
     pub fn run(self: &Self) -> Result<()> {
-        let ynab_transactions = self.ynab.get_transactions()?;
+        let mut ynab_transactions = self.ynab.get_transactions()?;
+        ynab_transactions.reverse();
         println!(
             "YNAB transactions:\n---------------\n{:?}\n---------------",
             ynab_transactions
@@ -19,8 +27,16 @@ impl<'a> Sync<'a> {
             n26_transactions
         );
 
-        // TODO: Get transactions from N26.
-        // TODO: Compare transactions.
+        let only_n26 = diff(&n26_transactions, &ynab_transactions);
+        for t in only_n26 {
+            println!("Only N26: {:?}", t);
+        }
+
+        let only_ynab = diff(&ynab_transactions, &n26_transactions);
+        for t in only_ynab {
+            println!("Only YNAB: {:?}", t);
+        }
+
         // TODO: Post new transactions to YNAB.
 
         Ok(())

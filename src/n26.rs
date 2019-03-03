@@ -24,8 +24,19 @@ impl Into<transaction::Transaction> for Transaction {
     fn into(self: Self) -> transaction::Transaction {
         let naive_time = NaiveDateTime::from_timestamp(self.created_ts / 1000, 0);
         let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
+
+        let cents = self.amount * 100.0;
+        // A hack to avoid precision error...
+        // TODO: Any better way?
+        let abs_cents = (cents.abs() + 0.001) as i32;
+        let amount_in_cents = if cents >= 0.0 {
+            abs_cents
+        } else {
+            -abs_cents
+        };
+
         transaction::Transaction {
-            amount_in_cents: (self.amount * 100.0) as i32,
+            amount_in_cents,
             date: date_time.format("%Y-%m-%d").to_string(),
         }
     }
