@@ -4,8 +4,6 @@ use failure::ResultExt;
 use reqwest::header;
 use serde::Deserialize;
 
-const USER_AGENT: &str = "ynan26";
-
 pub struct Ynab {
     pub personal_token: String,
     pub budget_id: String,
@@ -49,16 +47,17 @@ impl Ynab {
         let client = reqwest::Client::new();
         let mut res = client
             .get(&url)
-            .header(header::USER_AGENT, USER_AGENT)
             .header(header::AUTHORIZATION, authorization)
             .send()
             .context(ErrorKind::YnabGetTransactions)?;
 
+        let body = res.text().context(ErrorKind::YnabGetTransactions)?;
+
         if !res.status().is_success() {
-            Err(ErrorKind::YnabGetTransactions)?;
+            let http_error = ErrorKind::YnabGetTransactionsHttp(res.status().as_u16(), body.clone());
+            Err(http_error)?;
         }
 
-        let body = res.text().context(ErrorKind::YnabGetTransactions)?;
         let response: TransactionsResponse =
             serde_json::from_str(&body).context(ErrorKind::YnabGetTransactions)?;
 

@@ -63,8 +63,8 @@ impl N26 {
         let body = res.text().context(ErrorKind::N26GetTransactions)?;
 
         if !res.status().is_success() {
-            let failure = ErrorKind::N26GetTransactionsFailure(res.status().as_u16(), body.clone());
-            Err(failure)?;
+            let http_error = ErrorKind::N26GetTransactionsHttp(res.status().as_u16(), body.clone());
+            Err(http_error)?;
         }
 
         let transactions: Vec<Transaction> =
