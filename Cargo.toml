@@ -1,0 +1,10 @@
+[package]
+name = "ynan26"
+version = "0.1.0"
+authors = ["Shuhei Kagawa <shuhei.kagawa@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+dotenv = "0.10.1"
+failure = "0.1.5"
+reqwest = "0.9.10"
