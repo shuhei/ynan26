@@ -23,7 +23,10 @@ struct TransactionsWrapper {
 
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
+    // `amount: 1000` is 1 euro of deposit.
+    // `amount: -1000` is 1 euro of spending.
     pub amount: i32,
+    // Date in `YYYY-MM-DD` format. For example, `2019-03-01`.
     pub date: String,
 }
 
@@ -34,6 +37,7 @@ impl Ynab {
         // TODO: Get the current date and subtract a month from it.
         let a_month_ago = "2019-02-03";
 
+        // https://api.youneedabudget.com/v1#/Transactions/getTransactionsByAccount
         // If we use a database to store synchronization status, `last_knowledge_of_server` will be
         let url = format!(
             "https://api.youneedabudget.com/v1/budgets/{}/accounts/{}/transactions?since_date={}",
