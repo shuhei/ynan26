@@ -15,6 +15,9 @@ pub enum ErrorKind {
 
     #[fail(display = "failed to parse transactions from YNAB")]
     YnabParseTransactions,
+
+    #[fail(display = "failed to authenticate against N26")]
+    N26Authenticate,
 }
 
 #[derive(Debug)]

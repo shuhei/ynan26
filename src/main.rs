@@ -2,7 +2,8 @@ extern crate dotenv;
 extern crate failure;
 extern crate ynan26;
 
-use ynan26::{Config, Result, Sync, Ynab, N26};
+use failure::ResultExt;
+use ynan26::{Config, ErrorKind, Result, Sync, Ynab, N26};
 
 fn main() -> Result<()> {
     // Read .env only on debug build
@@ -18,17 +19,14 @@ fn main() -> Result<()> {
     }
 
     let config = Config::from_env()?;
-    println!("{:?}", config);
 
     let ynab = &Ynab {
         personal_token: config.ynab_token,
         budget_id: config.ynab_budget_id,
         account_id: config.ynab_account_id,
     };
-    let n26 = &N26 {
-        username: config.n26_username,
-        password: config.n26_password,
-    };
+    let n26 = &N26::authenticate(config.n26_username, config.n26_password)
+        .context(ErrorKind::N26Authenticate)?;
 
     let sync = &Sync { n26, ynab };
     sync.run()?;
