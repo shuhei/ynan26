@@ -9,6 +9,12 @@ pub type Result<T> = result::Result<T, Error>;
 pub enum ErrorKind {
     #[fail(display = "failed to read env variable")]
     ReadEnvVar,
+
+    #[fail(display = "failed to get transactions from YNAB")]
+    YnabGetTransactions,
+
+    #[fail(display = "failed to parse transactions from YNAB")]
+    YnabParseTransactions,
 }
 
 #[derive(Debug)]
