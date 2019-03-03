@@ -1,9 +1,9 @@
 use crate::{ErrorKind, Result};
+use chrono::{Duration, Utc};
 use failure::ResultExt;
 use oauth2::{AuthType, Config, Token};
 use reqwest::header;
 use serde::Deserialize;
-use std::time::{Duration, SystemTime};
 
 const API_URL: &str = "https://api.tech26.de";
 
@@ -40,16 +40,16 @@ impl N26 {
     }
 
     pub fn get_transactions(self: &Self) -> Result<Vec<Transaction>> {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .context(ErrorKind::UnixTimestamp)?;
-        let a_month_ago = now - Duration::new(60 * 60 * 24 * 30, 0);
-        let from = a_month_ago.as_secs() * 1000;
+        let now = Utc::now();
+        let a_month_ago = now - Duration::days(30);
 
+        // `from` and `to` have to be used together.
+        let from = a_month_ago.timestamp_millis();
+        let to = now.timestamp_millis();
         let limit = 100;
         let url = format!(
-            "{}/api/smrt/transactions?from={}&limit={}",
-            API_URL, from, limit
+            "{}/api/smrt/transactions?from={}&to={}&limit={}",
+            API_URL, from, to, limit
         );
         let authorization = format!("Bearer {}", self.access_token.access_token);
 

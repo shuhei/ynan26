@@ -1,4 +1,5 @@
 use crate::{ErrorKind, Result};
+use chrono::{Duration, Utc};
 use failure::ResultExt;
 use reqwest::header;
 use serde::Deserialize;
@@ -33,15 +34,15 @@ pub struct Transaction {
 impl Ynab {
     // Get recent transactions in the budget and the account from YNAB.
     pub fn get_transactions(self: &Self) -> Result<Vec<Transaction>> {
-        // more useful.
-        // TODO: Get the current date and subtract a month from it.
-        let a_month_ago = "2019-02-03";
+        let a_month_ago = Utc::now() - Duration::days(30);
 
         // https://api.youneedabudget.com/v1#/Transactions/getTransactionsByAccount
         // If we use a database to store synchronization status, `last_knowledge_of_server` will be
+        // useful.
+        let since_date = a_month_ago.format("%Y-%m-%d");
         let url = format!(
             "https://api.youneedabudget.com/v1/budgets/{}/accounts/{}/transactions?since_date={}",
-            self.budget_id, self.account_id, a_month_ago
+            self.budget_id, self.account_id, since_date
         );
         let authorization = format!("Bearer {}", self.personal_token);
 
