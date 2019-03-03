@@ -4,10 +4,10 @@ use std::env;
 
 #[derive(Debug)]
 pub struct Config {
-    ynab_token: String,
-    ynab_budget_id: String,
-    n26_username: String,
-    n26_password: String,
+    pub ynab_token: String,
+    pub ynab_budget_id: String,
+    pub n26_username: String,
+    pub n26_password: String,
 }
 
 fn read_env_var(name: &str) -> Result<String> {
