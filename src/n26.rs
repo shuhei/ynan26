@@ -16,13 +16,15 @@ pub struct N26 {
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
     pub amount: f32,
-    #[serde(rename = "createdTS")]
-    pub created_ts: i64,
+    #[serde(rename = "visibleTS")]
+    pub visible_ts: i64,
+    #[serde(rename = "merchantName")]
+    pub merchant_name: Option<String>,
 }
 
 impl Into<transaction::Transaction> for Transaction {
     fn into(self: Self) -> transaction::Transaction {
-        let naive_time = NaiveDateTime::from_timestamp(self.created_ts / 1000, 0);
+        let naive_time = NaiveDateTime::from_timestamp(self.visible_ts / 1000, 0);
         let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
 
         let cents = self.amount * 100.0;
@@ -38,6 +40,7 @@ impl Into<transaction::Transaction> for Transaction {
         transaction::Transaction {
             amount_in_cents,
             date: date_time.format("%Y-%m-%d").to_string(),
+            label: self.merchant_name.unwrap_or("<not set>".to_string()),
         }
     }
 }

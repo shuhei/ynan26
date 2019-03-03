@@ -1,4 +1,4 @@
-use crate::{Result, Ynab, N26, Transaction};
+use crate::{Result, Transaction, Ynab, N26};
 
 pub struct Sync<'a> {
     pub ynab: &'a Ynab,
@@ -9,28 +9,28 @@ pub struct Sync<'a> {
 // TODO: Use generic instead Transaction
 // TODO: Avoid O(m * n)
 fn diff<'a>(x: &'a [Transaction], y: &'a [Transaction]) -> Vec<&'a Transaction> {
-    x.iter().filter(|t| !y.contains(t)).collect()
+    x.iter()
+        .filter(|t| {
+            let found = y
+                .iter()
+                .find(|s| t.amount_in_cents == s.amount_in_cents && t.date == s.date);
+            found.is_none()
+        })
+        .collect()
 }
 
 impl<'a> Sync<'a> {
     pub fn run(self: &Self) -> Result<()> {
         let mut ynab_transactions = self.ynab.get_transactions()?;
         ynab_transactions.reverse();
-        println!(
-            "YNAB transactions:\n---------------\n{:?}\n---------------",
-            ynab_transactions
-        );
 
         let n26_transactions = self.n26.get_transactions()?;
-        println!(
-            "N26 transactions:\n---------------\n{:?}\n---------------",
-            n26_transactions
-        );
 
         let only_n26 = diff(&n26_transactions, &ynab_transactions);
         for t in only_n26 {
             println!("Only N26: {:?}", t);
         }
+        println!("\n");
 
         let only_ynab = diff(&ynab_transactions, &n26_transactions);
         for t in only_ynab {

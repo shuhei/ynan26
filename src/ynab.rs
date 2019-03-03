@@ -28,6 +28,7 @@ pub struct Transaction {
     pub amount: i32,
     // Date in `YYYY-MM-DD` format. For example, `2019-03-01`.
     pub date: String,
+    pub payee_name: String,
 }
 
 impl Into<transaction::Transaction> for Transaction {
@@ -35,6 +36,7 @@ impl Into<transaction::Transaction> for Transaction {
         transaction::Transaction {
             amount_in_cents: self.amount / 10,
             date: self.date,
+            label: self.payee_name,
         }
     }
 }
