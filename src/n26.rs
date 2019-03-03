@@ -1,12 +1,22 @@
 use crate::{ErrorKind, Result};
 use failure::ResultExt;
 use oauth2::{AuthType, Config, Token};
+use reqwest::header;
+use serde::Deserialize;
+use std::time::{Duration, SystemTime};
 
 const API_URL: &str = "https://api.tech26.de";
 
 #[derive(Debug)]
 pub struct N26 {
     access_token: Token,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Transaction {
+    pub amount: f32,
+    #[serde(rename = "createdTS")]
+    pub created_ts: i64,
 }
 
 impl N26 {
@@ -27,5 +37,39 @@ impl N26 {
 
         let client = N26 { access_token };
         Ok(client)
+    }
+
+    pub fn get_transactions(self: &Self) -> Result<Vec<Transaction>> {
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .context(ErrorKind::UnixTimestamp)?;
+        let a_month_ago = now - Duration::new(60 * 60 * 24 * 30, 0);
+        let from = a_month_ago.as_secs() * 1000;
+
+        let limit = 100;
+        let url = format!(
+            "{}/api/smrt/transactions?from={}&limit={}",
+            API_URL, from, limit
+        );
+        let authorization = format!("Bearer {}", self.access_token.access_token);
+
+        let client = reqwest::Client::new();
+        let mut res = client
+            .get(&url)
+            .header(header::AUTHORIZATION, authorization)
+            .send()
+            .context(ErrorKind::N26GetTransactions)?;
+
+        let body = res.text().context(ErrorKind::N26GetTransactions)?;
+
+        if !res.status().is_success() {
+            let failure = ErrorKind::N26GetTransactionsFailure(res.status().as_u16(), body.clone());
+            Err(failure)?;
+        }
+
+        let transactions: Vec<Transaction> =
+            serde_json::from_str(&body).context(ErrorKind::N26GetTransactions)?;
+
+        Ok(transactions)
     }
 }

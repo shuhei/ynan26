@@ -13,6 +13,12 @@ impl<'a> Sync<'a> {
             ynab_transactions
         );
 
+        let n26_transactions = self.n26.get_transactions()?;
+        println!(
+            "N26 transactions:\n---------------\n{:?}\n---------------",
+            n26_transactions
+        );
+
         // TODO: Get transactions from N26.
         // TODO: Compare transactions.
         // TODO: Post new transactions to YNAB.

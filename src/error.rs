@@ -10,14 +10,20 @@ pub enum ErrorKind {
     #[fail(display = "failed to read env variable")]
     ReadEnvVar,
 
+    #[fail(display = "failed to get unix timestamp")]
+    UnixTimestamp,
+
     #[fail(display = "failed to get transactions from YNAB")]
     YnabGetTransactions,
 
-    #[fail(display = "failed to parse transactions from YNAB")]
-    YnabParseTransactions,
-
     #[fail(display = "failed to authenticate against N26")]
     N26Authenticate,
+
+    #[fail(display = "failed to get transactions from N26")]
+    N26GetTransactions,
+
+    #[fail(display = "failed to get transactions from N26: {}, {}", _0, _1)]
+    N26GetTransactionsFailure(u16, String),
 }
 
 #[derive(Debug)]

@@ -59,7 +59,7 @@ impl Ynab {
 
         let body = res.text().context(ErrorKind::YnabGetTransactions)?;
         let response: TransactionsResponse =
-            serde_json::from_str(&body).context(ErrorKind::YnabParseTransactions)?;
+            serde_json::from_str(&body).context(ErrorKind::YnabGetTransactions)?;
 
         Ok(response.data.transactions)
     }
