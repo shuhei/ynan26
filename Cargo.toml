@@ -3,6 +3,11 @@ name = "ynan26"
 version = "0.1.0"
 authors = ["Shuhei Kagawa <shuhei.kagawa@gmail.com>"]
 edition = "2018"
+license = "MIT"
+homepage = "https://github.com/shuhei/ynan26"
+repository = "https://github.com/shuhei/ynan26"
+readme = "README.md"
+description = "Connects your N26 account and YNAB"
 
 [dependencies]
 dotenv = "0.10.1"
@@ -10,3 +15,6 @@ failure = "0.1.5"
 reqwest = "0.9.10"
 serde = { version = "1.0.89", features = ["derive"] }
 serde_json = "1.0.39"
+
+[workspace]
+exclude = [".env"]
