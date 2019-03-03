@@ -1,5 +1,6 @@
+use crate::transaction;
 use crate::{ErrorKind, Result};
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use failure::ResultExt;
 use oauth2::{AuthType, Config, Token};
 use reqwest::header;
@@ -17,6 +18,17 @@ pub struct Transaction {
     pub amount: f32,
     #[serde(rename = "createdTS")]
     pub created_ts: i64,
+}
+
+impl Into<transaction::Transaction> for Transaction {
+    fn into(self: Self) -> transaction::Transaction {
+        let naive_time = NaiveDateTime::from_timestamp(self.created_ts / 1000, 0);
+        let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
+        transaction::Transaction {
+            amount_in_cents: (self.amount * 100.0) as i32,
+            date: date_time.format("%Y-%m-%d").to_string(),
+        }
+    }
 }
 
 impl N26 {
@@ -39,7 +51,7 @@ impl N26 {
         Ok(client)
     }
 
-    pub fn get_transactions(self: &Self) -> Result<Vec<Transaction>> {
+    pub fn get_transactions(self: &Self) -> Result<Vec<transaction::Transaction>> {
         let now = Utc::now();
         let a_month_ago = now - Duration::days(30);
 
@@ -67,8 +79,9 @@ impl N26 {
             Err(http_error)?;
         }
 
-        let transactions: Vec<Transaction> =
+        let n26_transactions: Vec<Transaction> =
             serde_json::from_str(&body).context(ErrorKind::N26GetTransactions)?;
+        let transactions = n26_transactions.into_iter().map(|t| t.into()).collect();
 
         Ok(transactions)
     }

@@ -1,3 +1,4 @@
+use crate::transaction;
 use crate::{ErrorKind, Result};
 use chrono::{Duration, Utc};
 use failure::ResultExt;
@@ -29,9 +30,18 @@ pub struct Transaction {
     pub date: String,
 }
 
+impl Into<transaction::Transaction> for Transaction {
+    fn into(self: Self) -> transaction::Transaction {
+        transaction::Transaction {
+            amount_in_cents: self.amount / 10,
+            date: self.date,
+        }
+    }
+}
+
 impl Ynab {
     // Get recent transactions in the budget and the account from YNAB.
-    pub fn get_transactions(self: &Self) -> Result<Vec<Transaction>> {
+    pub fn get_transactions(self: &Self) -> Result<Vec<transaction::Transaction>> {
         let a_month_ago = Utc::now() - Duration::days(30);
 
         // https://api.youneedabudget.com/v1#/Transactions/getTransactionsByAccount
@@ -54,13 +64,20 @@ impl Ynab {
         let body = res.text().context(ErrorKind::YnabGetTransactions)?;
 
         if !res.status().is_success() {
-            let http_error = ErrorKind::YnabGetTransactionsHttp(res.status().as_u16(), body.clone());
+            let http_error =
+                ErrorKind::YnabGetTransactionsHttp(res.status().as_u16(), body.clone());
             Err(http_error)?;
         }
 
         let response: TransactionsResponse =
             serde_json::from_str(&body).context(ErrorKind::YnabGetTransactions)?;
+        let transactions = response
+            .data
+            .transactions
+            .into_iter()
+            .map(|t| t.into())
+            .collect();
 
-        Ok(response.data.transactions)
+        Ok(transactions)
     }
 }
