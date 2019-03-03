@@ -2,6 +2,7 @@ extern crate failure;
 extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
+extern crate oauth2;
 
 pub mod config;
 pub mod error;
