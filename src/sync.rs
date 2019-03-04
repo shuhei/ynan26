@@ -21,17 +21,18 @@ impl<'a> Sync<'a> {
         let n26_transactions = self.n26.get_transactions()?;
 
         let only_n26 = diff(&n26_transactions, &ynab_transactions);
-        for t in only_n26 {
+        println!("");
+        for t in &only_n26 {
             println!("Only N26: {:?}", t);
         }
-        println!("\n");
 
         let only_ynab = diff(&ynab_transactions, &n26_transactions);
-        for t in only_ynab {
+        println!("");
+        for t in &only_ynab {
             println!("Only YNAB: {:?}", t);
         }
 
-        // TODO: Post new transactions to YNAB.
+        self.ynab.post_transactions(only_n26.as_slice())?;
 
         Ok(())
     }

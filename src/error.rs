@@ -19,6 +19,12 @@ pub enum ErrorKind {
     #[fail(display = "failed to get transactions from YNAB: {} {}", _0, _1)]
     YnabGetTransactionsHttp(u16, String),
 
+    #[fail(display = "failed to post transactions to YNAB")]
+    YnabPostTransactions,
+
+    #[fail(display = "failed to post transactions to YNAB: {} {}", _0, _1)]
+    YnabPostTransactionsHttp(u16, String),
+
     #[fail(display = "failed to authenticate against N26")]
     N26Authenticate,
 

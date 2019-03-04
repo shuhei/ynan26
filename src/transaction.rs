@@ -1,5 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub struct Transaction {
+    pub id: String,
     pub amount_in_cents: i32,
     pub date: String,
     pub label: String,
