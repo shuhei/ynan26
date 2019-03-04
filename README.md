@@ -2,6 +2,10 @@
 
 You Need An N26—`ynan26` connects your N26 account to YNAB.
 
+## Warning
+
+Make sure to keep your credentials secret ([especially N26 password](https://github.com/Rots/n26-api#security-warning)). As stated in the MIT license, I'm not responsible for any consequences caused by using this software.
+
 ## Usage (for now)
 
 `ynan26` posts new transactions on your N26 account to YNAB. Even if you run it multiple times, it won't create duplicated transactions on YNAB, thanks to `import_id` in YNAB API.
