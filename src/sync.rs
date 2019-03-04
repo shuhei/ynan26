@@ -6,16 +6,10 @@ pub struct Sync<'a> {
 }
 
 // Find transactions in `x` that are not in `y`.
-// TODO: Use generic instead Transaction
-// TODO: Avoid O(m * n)
+// TODO: Avoid O(m * n). Use Set?
 fn diff<'a>(x: &'a [Transaction], y: &'a [Transaction]) -> Vec<&'a Transaction> {
     x.iter()
-        .filter(|t| {
-            let found = y
-                .iter()
-                .find(|s| t.amount_in_cents == s.amount_in_cents && t.date == s.date);
-            found.is_none()
-        })
+        .filter(|t| y.iter().find(|s| t.same(s)).is_none())
         .collect()
 }
 
