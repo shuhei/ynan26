@@ -5,7 +5,7 @@ extern crate ynan26;
 use ynan26::{Config, Result, Sync, Ynab, N26};
 
 fn main() -> Result<()> {
-    // Read .env only on debug build
+    // Read `.env` only on debug build
     if cfg!(debug_assertions) {
         match dotenv::dotenv() {
             Err(e) => {

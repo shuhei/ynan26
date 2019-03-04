@@ -8,15 +8,18 @@ use serde::Deserialize;
 
 const API_URL: &str = "https://api.tech26.de";
 
+// N26 API client.
 #[derive(Debug)]
 pub struct N26 {
     access_token: Token,
 }
 
+// A transaction on N26. Not all fields are deserialized.
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
     pub id: String,
 
+    // Amount in euros. Cents are represented as the fraction part.
     pub amount: f32,
 
     #[serde(rename = "visibleTS")]
@@ -32,7 +35,10 @@ impl Into<transaction::Transaction> for Transaction {
         let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
 
         let cents = self.amount * 100.0;
-        // A hack to avoid precision error...
+        // A hack to avoid floating point rounding error.
+        //   let n: f32 = -16.22;
+        //   println!("{}", n * 100.0);
+        //   // -1621.9999
         // TODO: Any better way?
         let abs_cents = (cents.abs() + 0.001) as i32;
         let amount_in_cents = if cents >= 0.0 {
@@ -70,6 +76,7 @@ impl N26 {
         Ok(client)
     }
 
+    // Get transactions of the last 30 days.
     pub fn get_transactions(self: &Self) -> Result<Vec<transaction::Transaction>> {
         let now = Utc::now();
         let a_month_ago = now - Duration::days(30);

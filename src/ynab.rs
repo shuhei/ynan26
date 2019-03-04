@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 const API_URL: &str = "https://api.youneedabudget.com/v1";
 
+// YNAB API client.
 pub struct Ynab {
     pub personal_token: String,
     pub budget_id: String,
@@ -23,13 +24,15 @@ struct TransactionsWrapper {
     pub transactions: Vec<Transaction>,
 }
 
+// A transaction on YNAB. Not all fields are deserialized.
 #[derive(Debug, Deserialize)]
 pub struct Transaction {
     pub id: String,
 
     // `amount: 1000` is 1 euro of deposit.
     // `amount: -1000` is 1 euro of spending.
-    pub amount: i32,
+    #[serde(rename = "amount")]
+    pub amount_in_milliunits: i32,
 
     // Date in `YYYY-MM-DD` format. For example, `2019-03-01`.
     pub date: String,
@@ -41,7 +44,7 @@ impl Into<transaction::Transaction> for Transaction {
     fn into(self: Self) -> transaction::Transaction {
         transaction::Transaction {
             id: self.id,
-            amount_in_cents: self.amount / 10,
+            amount_in_cents: self.amount_in_milliunits / 10,
             date: self.date,
             label: self.payee_name,
         }
@@ -114,6 +117,7 @@ impl Ynab {
         Ok(transactions)
     }
 
+    // Post transactions into the budget and the account.
     pub fn post_transactions(
         self: &Self,
         transactions: &[&transaction::Transaction],
