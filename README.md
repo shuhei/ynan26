@@ -40,6 +40,13 @@ Test:
 cargo test
 ```
 
+## Credits
+
+The N26 integration is based on:
+
+- https://github.com/Rots/n26-api
+- https://github.com/guitmz/n26
+
 ## License
 
 MIT
