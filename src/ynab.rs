@@ -2,7 +2,7 @@ use crate::transaction;
 use crate::{ErrorKind, Result};
 use chrono::{Duration, Utc};
 use failure::ResultExt;
-use reqwest::header;
+use reqwest::{header, Method};
 use serde::{Deserialize, Serialize};
 
 const API_URL: &str = "https://api.youneedabudget.com/v1";
@@ -37,7 +37,9 @@ pub struct Transaction {
     // Date in `YYYY-MM-DD` format. For example, `2019-03-01`.
     pub date: String,
 
-    pub payee_name: String,
+    pub payee_name: Option<String>,
+
+    pub import_id: Option<String>,
 }
 
 impl Into<transaction::Transaction> for Transaction {
@@ -46,7 +48,8 @@ impl Into<transaction::Transaction> for Transaction {
             id: self.id,
             amount_in_cents: self.amount_in_milliunits / 10,
             date: self.date,
-            label: self.payee_name,
+            label: self.payee_name.unwrap_or("<not set>".to_string()),
+            import_id: self.import_id,
         }
     }
 }
@@ -63,6 +66,8 @@ pub struct SaveTransactionsWrapper {
 
 #[derive(Debug, Serialize)]
 pub struct SaveTransaction {
+    pub id: Option<String>,
+
     pub account_id: String,
 
     #[serde(rename = "amount")]
@@ -72,7 +77,7 @@ pub struct SaveTransaction {
 
     pub import_id: String,
 
-    pub payee_name: String,
+    pub payee_name: Option<String>,
 }
 
 impl Ynab {
@@ -119,54 +124,60 @@ impl Ynab {
 
     // Post transactions into the budget and the account.
     pub fn post_transactions(
-        self: &Self,
-        transactions: &[&transaction::Transaction],
+        &self,
+        save_transactions: Vec<SaveTransaction>,
     ) -> Result<()> {
-        let save_transactions = transactions
-            .iter()
-            .map(|t| self.build_save_transaction(t))
-            .collect();
+        self.send_save_transactions(
+            Method::POST,
+            ErrorKind::YnabPostTransactions,
+            ErrorKind::YnabPostTransactionsHttp,
+            save_transactions
+        )
+    }
+
+    pub fn update_transactions(
+        &self,
+        save_transactions: Vec<SaveTransaction>,
+    ) -> Result<()> {
+        self.send_save_transactions(
+            Method::PATCH,
+            ErrorKind::YnabUpdateTransactions,
+            ErrorKind::YnabUpdateTransactionsHttp,
+            save_transactions
+        )
+    }
+
+    fn send_save_transactions(
+        &self,
+        method: Method,
+        error_kind: ErrorKind,
+        error_kind_http: fn(u16, String) -> ErrorKind,
+        save_transactions: Vec<SaveTransaction>,
+    ) -> Result<()> {
         let wrapper = SaveTransactionsWrapper {
             transactions: save_transactions,
         };
 
         let url = format!("{}/budgets/{}/transactions", API_URL, self.budget_id);
         let authorization = format!("Bearer {}", self.personal_token);
-        let req_body = serde_json::to_string(&wrapper).context(ErrorKind::YnabPostTransactions)?;
+        let req_body = serde_json::to_string(&wrapper).context(error_kind.clone())?;
 
         let client = reqwest::Client::new();
         let mut res = client
-            .post(&url)
+            .request(method, &url)
             .header(header::AUTHORIZATION, authorization)
             .header(header::ACCEPT, "application/json")
             .header(header::CONTENT_TYPE, "application/json")
             .body(req_body)
             .send()
-            .context(ErrorKind::YnabPostTransactions)?;
+            .context(error_kind.clone())?;
 
         if !res.status().is_success() {
-            let res_body = res.text().context(ErrorKind::YnabPostTransactions)?;
-            let http_error =
-                ErrorKind::YnabPostTransactionsHttp(res.status().as_u16(), res_body.clone());
+            let res_body = res.text().context(error_kind.clone())?;
+            let http_error = error_kind_http(res.status().as_u16(), res_body.clone());
             Err(http_error)?;
         }
 
         Ok(())
-    }
-
-    fn build_save_transaction(
-        self: &Self,
-        transaction: &transaction::Transaction,
-    ) -> SaveTransaction {
-        SaveTransaction {
-            account_id: self.account_id.to_owned(),
-            amount_in_milliunits: transaction.amount_in_cents * 10,
-            date: transaction.date.to_owned(),
-            // Using N26's transaction ID as is.
-            // I wanted to add a prefix, but YNAB allows only 36 characters in `import_id` and
-            // `id` from N26 is already 36 characters...
-            import_id: transaction.id.to_owned(),
-            payee_name: transaction.label.to_owned(),
-        }
     }
 }

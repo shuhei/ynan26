@@ -5,7 +5,7 @@ use std::result;
 
 pub type Result<T> = result::Result<T, Error>;
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Fail, PartialEq, Clone)]
 pub enum ErrorKind {
     #[fail(display = "failed to read env variable")]
     ReadEnvVar,
@@ -24,6 +24,12 @@ pub enum ErrorKind {
 
     #[fail(display = "failed to post transactions to YNAB: {} {}", _0, _1)]
     YnabPostTransactionsHttp(u16, String),
+
+    #[fail(display = "failed to update transactions on YNAB")]
+    YnabUpdateTransactions,
+
+    #[fail(display = "failed to update transactions on YNAB: {} {}", _0, _1)]
+    YnabUpdateTransactionsHttp(u16, String),
 
     #[fail(display = "failed to authenticate against N26")]
     N26Authenticate,

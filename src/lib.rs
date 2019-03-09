@@ -17,4 +17,4 @@ pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::n26::N26;
 pub use crate::sync::Sync;
 pub use crate::transaction::Transaction;
-pub use crate::ynab::Ynab;
+pub use crate::ynab::{Ynab, SaveTransaction};

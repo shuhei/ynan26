@@ -55,6 +55,7 @@ impl Into<transaction::Transaction> for Transaction {
             amount_in_cents,
             date: date_time.format("%Y-%m-%d").to_string(),
             label: self.merchant_name.or(self.partner_name).unwrap_or("<not set>".to_string()),
+            import_id: None,
         }
     }
 }
