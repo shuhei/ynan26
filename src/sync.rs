@@ -1,4 +1,6 @@
-use crate::{Result, Transaction, SaveTransaction, Ynab, N26};
+use crate::n26::{N26Transaction, N26};
+use crate::ynab::{SaveTransaction, Ynab, YnabTransaction};
+use crate::{Result, Transaction};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
@@ -7,10 +9,10 @@ pub struct Sync<'a> {
     pub n26: &'a N26,
 }
 
-#[derive(Hash, PartialEq, Eq, Debug)]
+#[derive(Debug)]
 pub struct UpdatedTransaction<'a> {
-    pub source: &'a Transaction,
-    pub destination: &'a Transaction,
+    pub n26: &'a N26Transaction,
+    pub ynab: &'a YnabTransaction,
 }
 
 impl<'a> Sync<'a> {
@@ -20,31 +22,31 @@ impl<'a> Sync<'a> {
 
         println!("");
 
-        let mut new_transactions = HashSet::new();
-        let mut updated_transactions = HashSet::new();
-        let mut only_ynab: HashSet<&Transaction> = HashSet::from_iter(&ynab_transactions);
+        let mut new_transactions = vec![];
+        let mut updated_transactions = vec![];
+        let mut only_ynab: HashSet<&YnabTransaction> = HashSet::from_iter(&ynab_transactions);
 
         // Find new and updated transactions
         // O(m * n), but we won't have so many transactions anyway.
         for n in &n26_transactions {
-            if let Some(y) = ynab_transactions.iter().find(|y| n.imported_as(y)) {
+            if let Some(y) = ynab_transactions
+                .iter()
+                .find(|y| y.import_id.clone().map(|ii| ii == n.id).unwrap_or(false))
+            {
                 // Already imported into YNAB
                 only_ynab.remove(y);
                 if !n.same_amount_and_date(y) {
                     // Amount or date were changed in N26
-                    updated_transactions.insert(UpdatedTransaction{
-                        source: n,
-                        destination: y,
-                    });
+                    updated_transactions.push(UpdatedTransaction { n26: n, ynab: y });
                 }
             } else {
                 // New transaction or manually input transaction
-                if let Some(y) = ynab_transactions.iter().find(|y| n.same_amount_and_date(y)) {
+                if let Some(y) = ynab_transactions.iter().find(|y| n.same_amount_and_date(y.clone())) {
                     // Most likely up-to-date manually input transaction
                     only_ynab.remove(y);
                 } else {
                     // Most likely new transaction or outdated manually input transaction
-                    new_transactions.insert(n);
+                    new_transactions.push(n);
                 }
             }
         }
@@ -65,36 +67,42 @@ impl<'a> Sync<'a> {
         println!("");
 
         if new_transactions.len() > 0 {
-            println!("Posting {} transactions from N26 to YNAB", new_transactions.len());
-            let transactions = Vec::from_iter(new_transactions)
+            println!(
+                "Posting {} transactions from N26 to YNAB",
+                new_transactions.len()
+            );
+            let transactions = new_transactions
                 .iter()
-                .map(|t| SaveTransaction {
+                .map(|n26| SaveTransaction {
                     id: None,
                     account_id: self.ynab.account_id.to_owned(),
-                    amount_in_milliunits: t.amount_in_cents * 10,
-                    date: t.date.to_owned(),
+                    amount_in_milliunits: n26.amount_in_cents() * 10,
+                    date: n26.date().to_owned(),
                     // Using N26's transaction ID as is.
                     // I wanted to add a prefix, but YNAB allows only 36 characters in `import_id` and
                     // `id` from N26 is already 36 characters...
-                    import_id: t.id.to_owned(),
-                    payee_name: Some(t.label.to_owned()),
+                    import_id: n26.id.to_owned(),
+                    payee_name: n26.payee_name(),
                 })
                 .collect();
             self.ynab.post_transactions(transactions)?;
         }
 
         if updated_transactions.len() > 0 {
-            println!("Updating {} transactions on YNAB", updated_transactions.len());
-            let transactions = Vec::from_iter(updated_transactions)
+            println!(
+                "Updating {} transactions on YNAB",
+                updated_transactions.len()
+            );
+            let transactions = updated_transactions
                 .iter()
-                .map(|UpdatedTransaction { source, destination }| SaveTransaction {
-                    id: Some(destination.id.to_owned()),
+                .map(|UpdatedTransaction { n26, ynab }| SaveTransaction {
+                    id: Some(ynab.id.to_owned()),
                     account_id: self.ynab.account_id.to_owned(),
-                    amount_in_milliunits: source.amount_in_cents * 10,
-                    date: source.date.to_owned(),
-                    import_id: source.id.to_owned(),
+                    amount_in_milliunits: n26.amount_in_cents() * 10,
+                    date: n26.date().to_owned(),
+                    import_id: ynab.id.to_owned(),
                     // Don't change manually edited payee name
-                    payee_name: None,
+                    payee_name: ynab.payee_name().or(n26.payee_name()),
                 })
                 .collect();
             self.ynab.update_transactions(transactions)?;

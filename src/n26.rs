@@ -1,5 +1,4 @@
-use crate::transaction;
-use crate::{ErrorKind, Result};
+use crate::{ErrorKind, Result, Transaction};
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use failure::ResultExt;
 use oauth2::{AuthType, Config, Token};
@@ -16,7 +15,7 @@ pub struct N26 {
 
 // A transaction on N26. Not all fields are deserialized.
 #[derive(Debug, Deserialize)]
-pub struct Transaction {
+pub struct N26Transaction {
     pub id: String,
 
     // Amount in euros. Cents are represented as the fraction part.
@@ -32,11 +31,8 @@ pub struct Transaction {
     pub partner_name: Option<String>,
 }
 
-impl Into<transaction::Transaction> for Transaction {
-    fn into(self: Self) -> transaction::Transaction {
-        let naive_time = NaiveDateTime::from_timestamp(self.visible_ts / 1000, 0);
-        let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
-
+impl Transaction for N26Transaction {
+    fn amount_in_cents(&self) -> i32 {
         let cents = self.amount * 100.0;
         // A hack to avoid floating point rounding error.
         //   let n: f32 = -16.22;
@@ -44,19 +40,22 @@ impl Into<transaction::Transaction> for Transaction {
         //   // -1621.9999
         // TODO: Any better way?
         let abs_cents = (cents.abs() + 0.001) as i32;
-        let amount_in_cents = if cents >= 0.0 {
+
+        if cents >= 0.0 {
             abs_cents
         } else {
             -abs_cents
-        };
-
-        transaction::Transaction {
-            id: self.id,
-            amount_in_cents,
-            date: date_time.format("%Y-%m-%d").to_string(),
-            label: self.merchant_name.or(self.partner_name).unwrap_or("<not set>".to_string()),
-            import_id: None,
         }
+    }
+
+    fn date(&self) -> String {
+        let naive_time = NaiveDateTime::from_timestamp(self.visible_ts / 1000, 0);
+        let date_time = DateTime::<Utc>::from_utc(naive_time, Utc);
+        date_time.format("%Y-%m-%d").to_string()
+    }
+
+    fn payee_name(&self) -> Option<String> {
+        self.merchant_name.clone().or(self.partner_name.clone())
     }
 }
 
@@ -81,7 +80,7 @@ impl N26 {
     }
 
     // Get transactions of the last 30 days.
-    pub fn get_transactions(self: &Self) -> Result<Vec<transaction::Transaction>> {
+    pub fn get_transactions(self: &Self) -> Result<Vec<N26Transaction>> {
         let now = Utc::now();
         let a_month_ago = now - Duration::days(30);
 
@@ -109,9 +108,8 @@ impl N26 {
             Err(http_error)?;
         }
 
-        let n26_transactions: Vec<Transaction> =
+        let transactions =
             serde_json::from_str(&body).context(ErrorKind::N26GetTransactions)?;
-        let transactions = n26_transactions.into_iter().map(|t| t.into()).collect();
 
         Ok(transactions)
     }
